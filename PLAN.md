@@ -15,12 +15,13 @@ hand-shadow puppet, and the 3D library makes the shadow fall over the walls and 
 2. Your silhouette from the camera (MediaPipe).
 3. A room with a cube and a lamp (three.js).
 4. The silhouette as a stencil on the lamp, so your shadow lands in the room.
+5. Models in the room from a one-line-per-thing list (`GLTFLoader`), starting with a Porsche.
 
 ## Ideas for next
 
 Roughly in order, but pick whatever is fun.
 
-- **Craft your own room.** Up next. Turn the plain room into a garage that feels like
+- **Craft your own room.** Started in step 5. Turn the plain room into a garage that feels like
   yours: a low-poly Porsche, a pull-up bar, better light, and whatever else you'd put in
   your own space. Simple things like the pull-up bar can be a few boxes and cylinders in
   code. The car is easier as a ready-made `.glb` model (free low-poly ones on Poly Pizza or
