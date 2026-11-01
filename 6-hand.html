@@ -1,0 +1,58 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>6 · hand</title>
+<style>
+  body { margin: 0; background: black; }
+  canvas { display: block; width: 100vw; height: 100vh; object-fit: contain; }
+</style>
+
+<script type="module">
+  import { createHand } from './hand.js';
+
+  // A bigger picture than the silhouette needed: from a metre or two away a hand is only a
+  // few pixels wide, too small to find its fingers.
+  const video = document.createElement('video');
+  video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 } });
+  await video.play();
+
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  document.body.append(canvas);
+  const ctx = canvas.getContext('2d');
+
+  // All the hand tracking lives in hand.js. This page only shows what it sees.
+  const hand = await createHand();
+
+  function onFrame() {
+    const state = hand.look(video, performance.now());
+
+    // The camera picture, flipped like a mirror. hand.js flips its points the same way.
+    ctx.save();
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+    ctx.restore();
+
+    // The 21 points, orange while you hold a fist, and a bigger dot where hand.js says the
+    // hand is.
+    if (state.points) {
+      ctx.fillStyle = state.fist ? 'orange' : 'white';
+      for (const point of state.points) {
+        ctx.beginPath();
+        ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(state.x * canvas.width, state.y * canvas.height, 8, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = 'white';
+    ctx.font = '20px sans-serif';
+    ctx.fillText(state.gesture + (state.fist ? ' (holding)' : ''), 12, 30);
+
+    video.requestVideoFrameCallback(onFrame);
+  }
+  video.requestVideoFrameCallback(onFrame);
+</script>

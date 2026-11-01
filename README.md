@@ -17,7 +17,7 @@ open it.
 
 ## Steps
 
-Each file stands alone, so you can read it top to bottom. Each one builds on the one before.
+Each file can be read top to bottom. Each one builds on the one before.
 
 | File | What it does | Library |
 |---|---|---|
@@ -26,6 +26,11 @@ Each file stands alone, so you can read it top to bottom. Each one builds on the
 | `3-room.html` | A room, a cube and a lamp | three.js |
 | `4-shadow.html` | Steps 2 and 3 together: your silhouette blocks the lamp, so you cast a shadow into the room | both |
 | `5-garage.html` | Step 4 with 3D models in the room instead of the cube | both |
+| `6-hand.html` | Finds your hand: draws its 21 points and names the gesture | MediaPipe |
+| `7-spin.html` | Step 5, plus grab the car with your fist and spin it | both |
+
+The hand tracking for steps 6 and 7 lives in its own file, `hand.js`, so the pages only
+decide what a hand *does*. The rest of each page still reads top to bottom on its own.
 
 The libraries load straight from the internet, so you need to be online. Camera frames
 never leave the page.
@@ -35,12 +40,12 @@ never leave the page.
 1. Download a model as `.glb` (one file, everything packed inside). On Sketchfab pick
    *Download 3D Model → GLB*.
 2. Put it in `models/`.
-3. Add a line to the `things` list near the top of `5-garage.html`:
+3. Add a line to the `things` list near the top of `5-garage.html` (or `7-spin.html`):
    ```js
    { file: 'models/chair.glb', size: 0.9, position: [1.8, 0, -3.5], turn: -20 },
    ```
    `size` is its longest side in metres, `position` is where it stands (0 up = on the
-   floor), `turn` is in degrees.
+   floor), `turn` is in degrees. In step 7, add `spins: true` to make it spinnable.
 
 If a file is missing, the room still opens and the Console says which one it skipped.
 Some models are compressed with Draco and need an extra loader; if one won't load, try a

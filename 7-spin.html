@@ -1,0 +1,232 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>7 · spin</title>
+<style>
+  body { margin: 0; }
+</style>
+
+<!-- GLTFLoader lives outside three.js's main file and imports it by the short name 'three'.
+     A browser doesn't know what 'three' means, so this map tells it where to find it. -->
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/"
+    }
+  }
+</script>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { createHand } from './hand.js';
+  import { FilesetResolver, ImageSegmenter } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/vision_bundle.mjs';
+
+  // ---- What's in the room: the same as step 5, plus spins ----
+
+  // One line per thing. To add something, drop its .glb file into models/ and add a line.
+  //   size:     its longest side in metres. Models come in any units (centimetres, inches,
+  //             whatever the artist used), so we scale every model to this size.
+  //   position: where it stands, [left/right, up, back]. Up = 0 puts its bottom on the floor.
+  //             The room goes from x = -2.5 to 2.5 and from z = 0 (us) to z = -5 (back wall).
+  //   turn:     how far to turn it around, in degrees.
+  //   spins:    new: true if you can grab it with your fist and spin it.
+  const things = [
+    { file: 'models/porsche.glb', size: 4.3, position: [0.3, 0, -3.2], turn: 35, spins: true },
+    { file: 'models/wall-bars.glb', size: 2.3, position: [2.0, 0, -2.6], turn: 180 },
+  ];
+
+  // ---- The room: the same as step 3, without the cube ----
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.toneMapping = THREE.AgXToneMapping;
+  document.body.append(renderer.domElement);
+
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 50);
+  camera.position.set(0, 1.25, 0.6);
+  camera.lookAt(0, 1.05, -5);
+
+  const wall = new THREE.MeshStandardMaterial({ color: 0xd9d1c5 });
+  const floor = new THREE.MeshStandardMaterial({ color: 0x8c7660 });
+  function addRectangle(width, height, material, position, rotation) {
+    const rectangle = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+    rectangle.position.set(...position);
+    rectangle.rotation.set(...rotation);
+    rectangle.receiveShadow = true;
+    scene.add(rectangle);
+  }
+  addRectangle(5, 5, floor, [0, 0, -2.5], [-Math.PI / 2, 0, 0]);       // floor
+  addRectangle(5, 5, wall, [0, 2.8, -2.5], [Math.PI / 2, 0, 0]);       // ceiling
+  addRectangle(5, 2.8, wall, [0, 1.4, -5], [0, 0, 0]);                 // back wall
+  addRectangle(5, 2.8, wall, [-2.5, 1.4, -2.5], [0, Math.PI / 2, 0]);  // left wall
+  addRectangle(5, 2.8, wall, [2.5, 1.4, -2.5], [0, -Math.PI / 2, 0]);  // right wall
+
+  const lamp = new THREE.SpotLight(0xffe2c0, 150);
+  lamp.position.set(1.4, 2.3, 2.6);
+  lamp.target.position.set(0, 1, -5);
+  lamp.angle = 0.5;
+  lamp.penumbra = 0.25;
+  lamp.castShadow = true;
+  // New: a model both casts shadows and catches them, so every surface also tests whether
+  // it shadows itself. The shadow map isn't precise enough for that, which covers the car in
+  // fine stripes ("shadow acne"). normalBias moves that test a little off the surface.
+  lamp.shadow.normalBias = 0.02;
+  scene.add(lamp, lamp.target);
+
+  scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x3a3028, 0.25));
+
+  addEventListener('resize', () => {
+    renderer.setSize(innerWidth, innerHeight);
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+  });
+
+  // ---- Load the things: the same as step 5 ----
+
+  const loader = new GLTFLoader();
+  const spinners = []; // new: the holders of the things that spin
+  for (const thing of things) {
+    let model;
+    try {
+      model = (await loader.loadAsync(thing.file)).scene;
+    } catch (error) {
+      console.warn(`Couldn't load ${thing.file}, skipping it.`, error);
+      continue;
+    }
+
+    // Scale it so its longest side is thing.size metres. A Box3 is the smallest box that
+    // fits around the model, lined up with the x, y and z axes.
+    const box = new THREE.Box3().setFromObject(model);
+    const dimensions = box.getSize(new THREE.Vector3());
+    model.scale.setScalar(thing.size / Math.max(dimensions.x, dimensions.y, dimensions.z));
+
+    // The artist could have put the model's centre anywhere. Shift it so its middle is over
+    // (0, 0) and its bottom is at 0, then put it inside a holder. Moving and turning the
+    // holder then moves and turns the model around its own middle.
+    box.setFromObject(model);
+    const middle = box.getCenter(new THREE.Vector3());
+    model.position.set(-middle.x, -box.min.y, -middle.z);
+    const holder = new THREE.Group();
+    holder.add(model);
+    holder.position.set(...thing.position);
+    holder.rotation.y = THREE.MathUtils.degToRad(thing.turn);
+    scene.add(holder);
+    if (thing.spins) spinners.push(holder);
+
+    // A model is a tree of many parts. Every part has to cast and catch shadows, or your
+    // shadow would pass straight through it.
+    model.traverse((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+    });
+  }
+
+  // ---- The stencil: the same as step 4 ----
+
+  // A spotlight can project a picture, like a slide projector: white lets the light
+  // through, black blocks it. (Stage lighting calls such a stencil a "cookie".)
+  // We paint your silhouette onto this square canvas, and the lamp projects it into the
+  // room. Because the lamp is a real light in the 3D scene, the dark shape lands on the
+  // walls and wraps around the cube by itself.
+  const stencil = document.createElement('canvas');
+  stencil.width = stencil.height = 512;
+  const stencilCtx = stencil.getContext('2d');
+  lamp.map = new THREE.CanvasTexture(stencil);
+
+  // ---- The camera and the network: the same as step 2 ----
+
+  // New: a bigger picture, because the hand tracker needs to see your fingers (step 6).
+  const video = document.createElement('video');
+  video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 } });
+  await video.play();
+
+  const files = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/wasm');
+  const segmenter = await ImageSegmenter.createFromOptions(files, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite',
+      delegate: 'GPU',
+    },
+    runningMode: 'VIDEO',
+    outputConfidenceMasks: true,
+  });
+
+  // Step 2's silhouette picture: black where you are, see-through elsewhere. This time it
+  // isn't shown on the page; it gets painted onto the stencil instead.
+  const silhouette = document.createElement('canvas');
+  silhouette.width = video.videoWidth;
+  silhouette.height = video.videoHeight;
+  const silhouetteCtx = silhouette.getContext('2d');
+  const image = silhouetteCtx.createImageData(silhouette.width, silhouette.height);
+  const smooth = new Float32Array(silhouette.width * silhouette.height);
+
+  // ---- New: spin with your fist ----
+
+  // All the hand tracking is in hand.js (see step 6). Here we only decide what a fist does.
+  const hand = await createHand();
+
+  // Like dragging with a mouse: while you hold a fist, the things turn by as much as your
+  // hand moved since the last frame. Sweeping your hand across the whole picture is one full
+  // turn. When you let go, they keep their last speed and slow down a little every frame,
+  // so you can throw them into a spin.
+  let lastX = null; // where the fist was on the last frame, or null if there was no fist
+  let speed = 0;    // how far they turn per frame, in radians
+  function spin(state) {
+    if (state.fist) {
+      speed = lastX === null ? 0 : (state.x - lastX) * 2 * Math.PI;
+      lastX = state.x;
+    } else {
+      lastX = null;
+      speed *= 0.95;
+    }
+    for (const holder of spinners) holder.rotation.y += speed;
+  }
+
+  // Runs once for every new camera frame. Nothing else in the room moves, so this is also
+  // the only time the room needs drawing.
+  function onFrame() {
+    // 1. Find you (step 2).
+    segmenter.segmentForVideo(video, performance.now(), (result) => {
+      const background = result.confidenceMasks[0].getAsFloat32Array();
+      for (let i = 0; i < background.length; i++) {
+        smooth[i] = 0.6 * smooth[i] + 0.4 * (1 - background[i]);
+        image.data[i * 4 + 3] = (smooth[i] - 0.3) / 0.4 * 255;
+      }
+      silhouetteCtx.putImageData(image, 0, 0);
+    });
+
+    // 2. Paint the stencil: white all over, then the silhouette on top, flipped left-right
+    //    like a mirror so the shadow of your right hand is on the right. The camera picture
+    //    is wider than it is tall, so it only covers a band across the middle of the square.
+    const size = stencil.width;
+    const height = size * silhouette.height / silhouette.width;
+    const top = (size - height) / 2;
+    stencilCtx.fillStyle = 'white';
+    stencilCtx.fillRect(0, 0, size, size);
+    stencilCtx.save();
+    stencilCtx.translate(size, 0);
+    stencilCtx.scale(-1, 1);
+    stencilCtx.filter = 'blur(6px)'; // soft edges, like a real shadow; this also hides small mistakes
+    stencilCtx.drawImage(silhouette, 0, top, size, height);
+    // Your body carries on below the camera picture, so stretch the picture's bottom row
+    // of pixels down to the bottom of the square. Otherwise the light shines in under you
+    // and your shadow floats. drawImage with 9 numbers means: take this part of the source
+    // (x, y, width, height) and draw it here (x, y, width, height). It starts 12 pixels up,
+    // inside the picture, so the blur doesn't leave a thin lit line where the two meet.
+    const bottom = top + height - 12;
+    stencilCtx.drawImage(silhouette, 0, silhouette.height - 1, silhouette.width, 1, 0, bottom, size, size - bottom);
+    stencilCtx.restore();
+    lamp.map.needsUpdate = true; // tell three.js the picture changed
+
+    // 3. New: find your hand and spin.
+    spin(hand.look(video, performance.now()));
+
+    // 4. Draw the room.
+    renderer.render(scene, camera);
+    video.requestVideoFrameCallback(onFrame);
+  }
+  video.requestVideoFrameCallback(onFrame);
+</script>

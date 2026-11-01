@@ -16,6 +16,8 @@ hand-shadow puppet, and the 3D library makes the shadow fall over the walls and 
 3. A room with a cube and a lamp (three.js).
 4. The silhouette as a stencil on the lamp, so your shadow lands in the room.
 5. Models in the room from a one-line-per-thing list (`GLTFLoader`), starting with a Porsche.
+6. Hand tracking (MediaPipe Gesture Recognizer) in its own module, `hand.js`.
+7. Grab the car with your fist and spin it, with momentum when you let go.
 
 ## Ideas for next
 
