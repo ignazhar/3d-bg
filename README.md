@@ -50,6 +50,5 @@ If a page stays black, open DevTools (F12) and look at the Console for the error
 
 ## Credits
 
-- "porsche 911 930 low poly" by [Panderlon](https://sketchfab.com/hypeout1235) on
-  [Sketchfab](https://sketchfab.com/3d-models/porsche-911-930-low-poly-4715a809d21c405d918287e759a6679c),
-  licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- "porsche 911 930 low poly" (https://skfb.ly/oIvY9) by Panderlon is licensed under Creative
+  Commons Attribution (http://creativecommons.org/licenses/by/4.0/).

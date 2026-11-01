@@ -30,7 +30,7 @@
   //             The room goes from x = -2.5 to 2.5 and from z = 0 (us) to z = -5 (back wall).
   //   turn:     how far to turn it around, in degrees.
   const things = [
-    { file: 'models/porsche.glb', size: 4.5, position: [0, 0, -2.8], turn: 30 },
+    { file: 'models/porsche.glb', size: 4.3, position: [0.3, 0, -3.2], turn: 35 },
   ];
 
   // ---- The room: the same as step 3, without the cube ----
@@ -68,6 +68,10 @@
   lamp.angle = 0.5;
   lamp.penumbra = 0.25;
   lamp.castShadow = true;
+  // New: a model both casts shadows and catches them, so every surface also tests whether
+  // it shadows itself. The shadow map isn't precise enough for that, which covers the car in
+  // fine stripes ("shadow acne"). normalBias moves that test a little off the surface.
+  lamp.shadow.normalBias = 0.02;
   scene.add(lamp, lamp.target);
 
   scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x3a3028, 0.25));
