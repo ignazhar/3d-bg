@@ -3,6 +3,8 @@
 A 3D room on your screen where your webcam silhouette casts a shadow. The idea and what
 could come next are in [PLAN.md](PLAN.md).
 
+![The garage from step 5: the shadow of a head and a raised hand falls across the back wall and the Porsche](example.png)
+
 ## Run
 
 ```bash
