@@ -56,6 +56,7 @@ background picture. The small GNOME Shell extension in `gnome-extension/` fixes 
 GNOME draws a background, it puts a live copy of the wallpaper window on top. Install it once:
 
 ```bash
+mkdir -p ~/.local/share/gnome-shell/extensions
 ln -s "$PWD/gnome-extension/3d-bg@ihnat" ~/.local/share/gnome-shell/extensions/
 ```
 
