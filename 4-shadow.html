@@ -1,0 +1,136 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>4 · shadow</title>
+<style>
+  body { margin: 0; }
+</style>
+
+<script type="module">
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js';
+  import { FilesetResolver, ImageSegmenter } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/vision_bundle.mjs';
+
+  // ---- The room: the same as step 3 ----
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.toneMapping = THREE.AgXToneMapping;
+  document.body.append(renderer.domElement);
+
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 50);
+  camera.position.set(0, 1.25, 0.6);
+  camera.lookAt(0, 1.05, -5);
+
+  const wall = new THREE.MeshStandardMaterial({ color: 0xd9d1c5 });
+  const floor = new THREE.MeshStandardMaterial({ color: 0x8c7660 });
+  function addRectangle(width, height, material, position, rotation) {
+    const rectangle = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+    rectangle.position.set(...position);
+    rectangle.rotation.set(...rotation);
+    rectangle.receiveShadow = true;
+    scene.add(rectangle);
+  }
+  addRectangle(5, 5, floor, [0, 0, -2.5], [-Math.PI / 2, 0, 0]);       // floor
+  addRectangle(5, 5, wall, [0, 2.8, -2.5], [Math.PI / 2, 0, 0]);       // ceiling
+  addRectangle(5, 2.8, wall, [0, 1.4, -5], [0, 0, 0]);                 // back wall
+  addRectangle(5, 2.8, wall, [-2.5, 1.4, -2.5], [0, Math.PI / 2, 0]);  // left wall
+  addRectangle(5, 2.8, wall, [2.5, 1.4, -2.5], [0, -Math.PI / 2, 0]);  // right wall
+
+  const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.8, 0.8),
+    new THREE.MeshStandardMaterial({ color: 0x2f5d8a }),
+  );
+  cube.position.set(0.4, 0.4, -2.6);
+  cube.rotation.y = 0.5;
+  cube.castShadow = true;
+  scene.add(cube);
+
+  const lamp = new THREE.SpotLight(0xffe2c0, 150);
+  lamp.position.set(1.4, 2.3, 2.6);
+  lamp.target.position.set(0, 1, -5);
+  lamp.angle = 0.5;
+  lamp.penumbra = 0.25;
+  lamp.castShadow = true;
+  scene.add(lamp, lamp.target);
+
+  scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x3a3028, 0.25));
+
+  addEventListener('resize', () => {
+    renderer.setSize(innerWidth, innerHeight);
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+  });
+
+  // ---- New: the stencil ----
+
+  // A spotlight can project a picture, like a slide projector: white lets the light
+  // through, black blocks it. (Stage lighting calls such a stencil a "cookie".)
+  // We paint your silhouette onto this square canvas, and the lamp projects it into the
+  // room. Because the lamp is a real light in the 3D scene, the dark shape lands on the
+  // walls and wraps around the cube by itself.
+  const stencil = document.createElement('canvas');
+  stencil.width = stencil.height = 512;
+  const stencilCtx = stencil.getContext('2d');
+  lamp.map = new THREE.CanvasTexture(stencil);
+
+  // ---- The camera and the network: the same as step 2 ----
+
+  const video = document.createElement('video');
+  video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 180 } });
+  await video.play();
+
+  const files = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/wasm');
+  const segmenter = await ImageSegmenter.createFromOptions(files, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite',
+      delegate: 'GPU',
+    },
+    runningMode: 'VIDEO',
+    outputConfidenceMasks: true,
+  });
+
+  // Step 2's silhouette picture: black where you are, see-through elsewhere. This time it
+  // isn't shown on the page; it gets painted onto the stencil instead.
+  const silhouette = document.createElement('canvas');
+  silhouette.width = video.videoWidth;
+  silhouette.height = video.videoHeight;
+  const silhouetteCtx = silhouette.getContext('2d');
+  const image = silhouetteCtx.createImageData(silhouette.width, silhouette.height);
+  const smooth = new Float32Array(silhouette.width * silhouette.height);
+
+  // Runs once for every new camera frame. Nothing else in the room moves, so this is also
+  // the only time the room needs drawing.
+  function onFrame() {
+    // 1. Find you (step 2).
+    segmenter.segmentForVideo(video, performance.now(), (result) => {
+      const background = result.confidenceMasks[0].getAsFloat32Array();
+      for (let i = 0; i < background.length; i++) {
+        smooth[i] = 0.6 * smooth[i] + 0.4 * (1 - background[i]);
+        image.data[i * 4 + 3] = (smooth[i] - 0.3) / 0.4 * 255;
+      }
+      silhouetteCtx.putImageData(image, 0, 0);
+    });
+
+    // 2. Paint the stencil: white all over, then the silhouette on top, flipped left-right
+    //    like a mirror so the shadow of your right hand is on the right. The camera picture
+    //    is wider than it is tall, so it leaves a white band above and below.
+    const size = stencil.width;
+    const height = size * silhouette.height / silhouette.width;
+    stencilCtx.fillStyle = 'white';
+    stencilCtx.fillRect(0, 0, size, size);
+    stencilCtx.save();
+    stencilCtx.translate(size, 0);
+    stencilCtx.scale(-1, 1);
+    stencilCtx.filter = 'blur(6px)'; // soft edges, like a real shadow; this also hides small mistakes
+    stencilCtx.drawImage(silhouette, 0, (size - height) / 2, size, height);
+    stencilCtx.restore();
+    lamp.map.needsUpdate = true; // tell three.js the picture changed
+
+    // 3. Draw the room.
+    renderer.render(scene, camera);
+    video.requestVideoFrameCallback(onFrame);
+  }
+  video.requestVideoFrameCallback(onFrame);
+</script>

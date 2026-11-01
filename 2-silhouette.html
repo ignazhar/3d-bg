@@ -1,0 +1,70 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>2 · silhouette</title>
+<style>
+  body { margin: 0; background: #d9d1c5; } /* a plain wall */
+  canvas { display: block; width: 100vw; height: 100vh; object-fit: contain; transform: scaleX(-1); }
+  p { position: fixed; left: 10px; bottom: 0; font: 14px monospace; }
+</style>
+
+<canvas></canvas>
+<p></p>
+
+<script type="module">
+  import { FilesetResolver, ImageSegmenter } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/vision_bundle.mjs';
+
+  // The camera, as in step 1, but small: the network only ever looks at a 256x256
+  // thumbnail, so a bigger picture would just cost time. This <video> is never put on the page.
+  const video = document.createElement('video');
+  video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 180 } });
+  await video.play();
+
+  // Load the person-finding network (16 MB). There is also a tiny 0.25 MB one,
+  // 'selfie_segmenter': about 2.5 times faster, but things behind you fool it more easily.
+  const files = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/wasm');
+  const segmenter = await ImageSegmenter.createFromOptions(files, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite',
+      delegate: 'GPU', // try 'CPU' to compare the speed
+    },
+    runningMode: 'VIDEO',
+    outputConfidenceMasks: true, // per pixel, how sure the network is: 0 = not at all ... 1 = certain
+  });
+
+  // We write the picture pixel by pixel. Each pixel is 4 bytes: red, green, blue, alpha.
+  // Red, green and blue stay 0 (black). Only alpha changes, so the picture is black where
+  // you are and see-through everywhere else.
+  const canvas = document.querySelector('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(canvas.width, canvas.height);
+  const smooth = new Float32Array(canvas.width * canvas.height); // the network's answers, averaged over time
+  const info = document.querySelector('p');
+
+  // Runs once for every new camera frame.
+  function onFrame() {
+    const start = performance.now();
+    segmenter.segmentForVideo(video, start, (result) => {
+      // The network sorts pixels into background, hair, skin, clothes and so on, and gives
+      // one answer per kind. The first is "how sure am I that this is background".
+      const background = result.confidenceMasks[0].getAsFloat32Array();
+      for (let i = 0; i < background.length; i++) {
+        const you = 1 - background[i];
+        // Smoothing: keep 60% of the old value and mix in 40% of the new one, so a pixel
+        // the network gets wrong for a single frame barely shows. Try other splits:
+        // less of the new one is calmer but lags behind you; 100% new means no smoothing.
+        smooth[i] = 0.6 * smooth[i] + 0.4 * you;
+        // Cut-off: below 0.3 is "not you" (invisible), above 0.7 is "you" (fully black),
+        // with a soft edge in between. image.data only holds 0..255, so anything outside
+        // that range is clipped to 0 or 255.
+        image.data[i * 4 + 3] = (smooth[i] - 0.3) / 0.4 * 255;
+      }
+      ctx.putImageData(image, 0, 0);
+    });
+    const ms = performance.now() - start;
+    info.textContent = `${ms.toFixed(1)} ms per frame (keeps up with the camera if under 33 ms)`;
+    video.requestVideoFrameCallback(onFrame);
+  }
+  video.requestVideoFrameCallback(onFrame);
+</script>

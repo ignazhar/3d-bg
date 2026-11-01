@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>1 · camera</title>
+<style>
+  body { margin: 0; background: black; }
+  /* Fill the window, and flip left-right so it behaves like a mirror.
+     display: block stops the browser treating the video like a word on a line of text,
+     which leaves a small gap below it and makes the page scroll. */
+  video { display: block; width: 100vw; height: 100vh; transform: scaleX(-1); }
+</style>
+
+<video autoplay muted></video>
+
+<script type="module">
+  // Ask the browser for the camera, then show it in the <video>.
+  const video = document.querySelector('video');
+  video.srcObject = await navigator.mediaDevices.getUserMedia({ video: true });
+</script>

@@ -1,0 +1,75 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>3 · room</title>
+<style>
+  body { margin: 0; }
+</style>
+
+<script type="module">
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js';
+
+  // three.js in one sentence: a renderer draws a scene as seen from a camera.
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.toneMapping = THREE.AgXToneMapping; // softens very bright spots instead of burning them white
+  document.body.append(renderer.domElement);
+
+  const scene = new THREE.Scene();
+
+  // Units are metres. The room's open side is at z = 0 and it goes back to z = -5.
+  // Our eye is at head height, just outside the room, looking in.
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 50);
+  camera.position.set(0, 1.25, 0.6);
+  camera.lookAt(0, 1.05, -5);
+
+  // The room: a floor, a ceiling and three walls, each a flat rectangle. There is no wall
+  // on our side, so we can see in. A new rectangle stands upright facing us, so we turn
+  // each one into place (angles are in radians: Math.PI / 2 is a quarter turn).
+  const wall = new THREE.MeshStandardMaterial({ color: 0xd9d1c5 });
+  const floor = new THREE.MeshStandardMaterial({ color: 0x8c7660 });
+  function addRectangle(width, height, material, position, rotation) {
+    const rectangle = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+    rectangle.position.set(...position);
+    rectangle.rotation.set(...rotation);
+    rectangle.receiveShadow = true;
+    scene.add(rectangle);
+  }
+  addRectangle(5, 5, floor, [0, 0, -2.5], [-Math.PI / 2, 0, 0]);       // floor
+  addRectangle(5, 5, wall, [0, 2.8, -2.5], [Math.PI / 2, 0, 0]);       // ceiling
+  addRectangle(5, 2.8, wall, [0, 1.4, -5], [0, 0, 0]);                 // back wall
+  addRectangle(5, 2.8, wall, [-2.5, 1.4, -2.5], [0, Math.PI / 2, 0]);  // left wall
+  addRectangle(5, 2.8, wall, [2.5, 1.4, -2.5], [0, -Math.PI / 2, 0]);  // right wall
+
+  const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.8, 0.8),
+    new THREE.MeshStandardMaterial({ color: 0x2f5d8a }),
+  );
+  cube.position.set(0.4, 0.4, -2.6);
+  cube.rotation.y = 0.5;
+  cube.castShadow = true;
+  scene.add(cube);
+
+  // The lamp: a spotlight on OUR side of the screen (z > 0), up and to the right,
+  // shining into the room. Being on our side is what lets us cast a shadow in step 4.
+  const lamp = new THREE.SpotLight(0xffe2c0, 150);
+  lamp.position.set(1.4, 2.3, 2.6);
+  lamp.target.position.set(0, 1, -5);
+  lamp.angle = 0.5;     // how wide the cone of light is
+  lamp.penumbra = 0.25; // how soft the cone's edge is
+  lamp.castShadow = true;
+  scene.add(lamp, lamp.target); // the target must be in the scene too, or the lamp ignores it
+
+  // A little light from everywhere, so shadows aren't pitch black.
+  scene.add(new THREE.HemisphereLight(0x9fb4d0, 0x3a3028, 0.25));
+
+  // Keep the picture right when the window changes size.
+  addEventListener('resize', () => {
+    renderer.setSize(innerWidth, innerHeight);
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+  });
+
+  // Draw the scene over and over, once per screen refresh.
+  renderer.setAnimationLoop(() => renderer.render(scene, camera));
+</script>
