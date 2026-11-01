@@ -49,6 +49,26 @@ desktop: below every window, on every workspace, not in Alt+Tab, and behind your
 icons. Ctrl+C in the terminal stops it. GNOME on X11 only. While it runs, the camera is on
 and the battery drains faster.
 
+### Also in the overview and on the lock screen
+
+GNOME never draws windows in the overview (Super key) or on the lock screen, only its
+background picture. The small GNOME Shell extension in `gnome-extension/` fixes that: wherever
+GNOME draws a background, it puts a live copy of the wallpaper window on top. Install it once:
+
+```bash
+ln -s "$PWD/gnome-extension/3d-bg@ihnat" ~/.local/share/gnome-shell/extensions/
+```
+
+Restart GNOME Shell (X11: Alt+F2, type `r`, Enter; your windows stay open), then:
+
+```bash
+gnome-extensions enable 3d-bg@ihnat
+./wallpaper.sh
+```
+
+If something looks wrong, `journalctl --user -b -o cat /usr/bin/gnome-shell | grep -i 3d-bg`
+shows its errors. `gnome-extensions disable 3d-bg@ihnat` turns it off.
+
 ## Adding things to the room
 
 1. Download a model as `.glb` (one file, everything packed inside). On Sketchfab pick

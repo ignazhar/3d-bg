@@ -1,0 +1,6 @@
+{
+  "uuid": "3d-bg@ihnat",
+  "name": "3d-bg wallpaper",
+  "description": "Shows the 3d-bg window (started by wallpaper.sh) as the background everywhere: desktop, overview and lock screen.",
+  "shell-version": ["46"]
+}
