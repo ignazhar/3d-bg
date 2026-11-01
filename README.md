@@ -35,6 +35,18 @@ decide what a hand *does*. The rest of each page still reads top to bottom on it
 The libraries load straight from the internet, so you need to be online. Camera frames
 never leave the page.
 
+## As your wallpaper
+
+```bash
+./wallpaper.sh                 # runs 7-spin.html
+./wallpaper.sh 4-shadow.html   # or any other step
+```
+
+It opens the page in its own fullscreen Chrome, then tells GNOME the window is part of the
+desktop: below every window, on every workspace, not in Alt+Tab, and behind your desktop
+icons. Ctrl+C in the terminal stops it. GNOME on X11 only. While it runs, the camera is on
+and the battery drains faster.
+
 ## Adding things to the room
 
 1. Download a model as `.glb` (one file, everything packed inside). On Sketchfab pick

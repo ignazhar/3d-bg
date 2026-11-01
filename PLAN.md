@@ -18,6 +18,7 @@ hand-shadow puppet, and the 3D library makes the shadow fall over the walls and 
 5. Models in the room from a one-line-per-thing list (`GLTFLoader`), starting with a Porsche.
 6. Hand tracking (MediaPipe Gesture Recognizer) in its own module, `hand.js`.
 7. Grab the car with your fist and spin it, with momentum when you let go.
+8. `wallpaper.sh`: runs a step as the desktop, behind windows and icons (X11 window type).
 
 ## Ideas for next
 
@@ -34,8 +35,8 @@ Roughly in order, but pick whatever is fun.
   your shadow won't land on it.
 - **A nicer shadow.** Blur its edges. Smooth it over time so it flickers less. Fade it in
   when you appear instead of popping in.
-- **The real wallpaper.** Open the page as a fullscreen Chrome window and push it below
-  all other windows with `wmctrl`. Later maybe a proper app with Electron.
+- **Start with the computer.** A `.desktop` file in `~/.config/autostart` runs
+  `wallpaper.sh` at login.
 - **Save battery.** Run slower or stop when nobody is there, and turn the camera off when
   the screen is locked.
 - **The window effect.** Track your head with the camera and move the 3D camera with it,
