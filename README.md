@@ -48,7 +48,17 @@ different download or ask.
 
 If a page stays black, open DevTools (F12) and look at the Console for the error.
 
-## Credits
+## Licences
 
-- "porsche 911 930 low poly" (https://skfb.ly/oIvY9) by Panderlon is licensed under Creative
-  Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+- **This project's code:** MIT, see [LICENSE](LICENSE).
+- **Libraries** (loaded from a CDN, not stored here): [three.js](https://threejs.org) is MIT;
+  [MediaPipe](https://ai.google.dev/edge/mediapipe) is Apache 2.0. The segmentation model
+  is Google's, see its model card for terms.
+- **3D models** in `models/`, each licensed under Creative Commons Attribution, which
+  means the authors must be credited:
+  - "porsche 911 930 low poly" (https://skfb.ly/oIvY9) by Panderlon is licensed under
+    Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+  - "WALL BAR SET WORKOUT STATION WINNER BLACK 4" (https://skfb.ly/6FFp7) by BenchK is
+    licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+
+When you add a model, add its credit here.
