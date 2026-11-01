@@ -115,16 +115,24 @@
 
     // 2. Paint the stencil: white all over, then the silhouette on top, flipped left-right
     //    like a mirror so the shadow of your right hand is on the right. The camera picture
-    //    is wider than it is tall, so it leaves a white band above and below.
+    //    is wider than it is tall, so it only covers a band across the middle of the square.
     const size = stencil.width;
     const height = size * silhouette.height / silhouette.width;
+    const top = (size - height) / 2;
     stencilCtx.fillStyle = 'white';
     stencilCtx.fillRect(0, 0, size, size);
     stencilCtx.save();
     stencilCtx.translate(size, 0);
     stencilCtx.scale(-1, 1);
     stencilCtx.filter = 'blur(6px)'; // soft edges, like a real shadow; this also hides small mistakes
-    stencilCtx.drawImage(silhouette, 0, (size - height) / 2, size, height);
+    stencilCtx.drawImage(silhouette, 0, top, size, height);
+    // Your body carries on below the camera picture, so stretch the picture's bottom row
+    // of pixels down to the bottom of the square. Otherwise the light shines in under you
+    // and your shadow floats. drawImage with 9 numbers means: take this part of the source
+    // (x, y, width, height) and draw it here (x, y, width, height). It starts 12 pixels up,
+    // inside the picture, so the blur doesn't leave a thin lit line where the two meet.
+    const bottom = top + height - 12;
+    stencilCtx.drawImage(silhouette, 0, silhouette.height - 1, silhouette.width, 1, 0, bottom, size, size - bottom);
     stencilCtx.restore();
     lamp.map.needsUpdate = true; // tell three.js the picture changed
 
